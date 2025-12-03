@@ -1,7 +1,17 @@
+
 data "azurerm_client_config" "current" {}
 
+# Random suffix to avoid global Key Vault name conflict
+resource "random_string" "suffix" {
+  length  = 4
+  lower   = true
+  upper   = false
+  numeric = true
+  special = false
+}
+
 resource "azurerm_key_vault" "kv" {
-  name                        = "${var.project_name}-${var.environment}-kv"
+  name                        = "${var.project_name}-${var.environment}-kv-${random_string.suffix.result}"
   location                    = var.location
   resource_group_name         = var.resource_group_name
   sku_name                    = var.sku
@@ -9,6 +19,8 @@ resource "azurerm_key_vault" "kv" {
   soft_delete_retention_days  = 7
   purge_protection_enabled    = true
   tags                        = var.tags
+
+  # Recommended access policy block can be added here if needed
 }
 
 # Optional Private Endpoint for Key Vault
@@ -27,6 +39,6 @@ resource "azurerm_private_endpoint" "kv_pe" {
   }
 }
 
-# Optional Private DNS zone and link for Key Vault privatelink
-// Private DNS handling for Key Vault was removed — module creates only the
-// optional Private Endpoint. Manage private DNS outside this module if needed.
+# NOTE:
+# Private DNS zone for Key Vault privatelink is not created here.
+# If needed, manage private DNS outside this module or via a dedicated DNS module.

@@ -216,5 +216,3 @@ Tags must be applied consistently across all modules.
 * **DEVELOPER_GUIDE.md** – Cluster access, ACR usage, MySQL access, best practices
 
 ---
-
-
