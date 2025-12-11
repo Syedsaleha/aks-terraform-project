@@ -81,7 +81,10 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config="backend-configs/${{ steps.set-env.outputs.environment }}.tfbackend"
+            -backend-config="resource_group_name=${{ secrets.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ steps.set-env.outputs.environment }}/terraform.tfstate"
       
       - name: Terraform Plan
         run: |
@@ -134,7 +137,10 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config="backend-configs/${{ steps.set-env.outputs.environment }}.tfbackend"
+            -backend-config="resource_group_name=${{ secrets.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ steps.set-env.outputs.environment }}/terraform.tfstate"
       
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
