@@ -39,8 +39,8 @@ on:
         type: string
 
 env:
-  FRONTEND_PATH: './app-code/frontend'
-  BACKEND_PATH: './app-code/backend'
+  FRONTEND_PATH: './book-review-app/frontend'
+  BACKEND_PATH: './book-review-app/backend'
   K8S_PATH: './k8s'
 
 jobs:
@@ -79,11 +79,11 @@ jobs:
           
           # Clone the application repository
           git clone --branch $APP_BRANCH --depth 1 \
-            https://github.com/$APP_REPO.git app-code
+            https://github.com/$APP_REPO.git book-review-app
           
           echo "✅ Application code fetched successfully"
           echo "📁 Directory structure:"
-          ls -la app-code/
+          ls -la book-review-app/
       
       - name: Verify Application Structure
         run: |
