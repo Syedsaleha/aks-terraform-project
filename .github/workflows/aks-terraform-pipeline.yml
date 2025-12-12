@@ -1,12 +1,24 @@
-name: AKS Terraform Pipeline
+name: Infrastructure Deployment
+
+# Workflow Chain: Push to main → Infrastructure Deploy → Application Deploy → Manual Destroy
+# This workflow automatically triggers Application Deployment upon successful completion
 
 on: 
     push:
         branches:
         - main
+        paths:
+        - 'modules/**'
+        - '*.tf'
+        - 'envs/**'
+        - '.github/workflows/aks-terraform-pipeline.yml'
     pull_request:
         branches:
         - main
+        paths:
+        - 'modules/**'
+        - '*.tf'
+        - 'envs/**'
     workflow_dispatch:
         inputs:
             environment:
@@ -154,4 +166,42 @@ jobs:
       
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-
+      
+      - name: Export Terraform Outputs
+        id: tf-outputs
+        run: |
+          terraform output -json > terraform-outputs.json
+          cat terraform-outputs.json
+          
+          # Extract key values for verification
+          echo "acr_name=$(terraform output -raw acr_name)" >> $GITHUB_OUTPUT
+          echo "aks_cluster_name=$(terraform output -raw aks_cluster_name)" >> $GITHUB_OUTPUT
+          echo "resource_group_name=$(terraform output -raw resource_group_name)" >> $GITHUB_OUTPUT
+      
+      - name: Upload Terraform State Info
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state-${{ steps.set-env.outputs.environment }}
+          path: |
+            terraform-outputs.json
+            terraform.tfstate
+          retention-days: 7
+      
+      - name: Trigger Application Deployment
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'app-deployment.yml',
+              ref: 'main',
+              inputs: {
+                environment: '${{ steps.set-env.outputs.environment }}',
+                run_id: '${{ github.run_id }}',
+                app_repository: 'pravinmishraaws/book-review-app',
+                app_branch: 'main'
+              }
+            });
