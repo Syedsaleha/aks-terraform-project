@@ -211,6 +211,16 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
+      - name: Install kubelogin
+        run: |
+          echo "📦 Installing kubelogin for Azure AD authentication..."
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.4/kubelogin-linux-amd64.zip
+          unzip kubelogin-linux-amd64.zip
+          sudo mv bin/linux_amd64/kubelogin /usr/local/bin/
+          sudo chmod +x /usr/local/bin/kubelogin
+          kubelogin --version
+          echo "✅ kubelogin installed successfully"
+      
       - name: Get AKS Credentials
         run: |
           echo "✅ Using infrastructure details from Terraform:"
@@ -222,6 +232,9 @@ jobs:
             --resource-group ${{ needs.build-and-push-images.outputs.resource-group }} \
             --name ${{ needs.build-and-push-images.outputs.aks-cluster-name }} \
             --overwrite-existing
+          
+          # Convert kubeconfig to use kubelogin for Azure AD auth
+          kubelogin convert-kubeconfig -l azurecli
       
       - name: Set MySQL FQDN
         id: get-mysql
