@@ -51,3 +51,11 @@ resource "azurerm_role_assignment" "aks_admin" {
   role_definition_name = "Azure Kubernetes Service Cluster Admin Role"
   principal_id         = data.azurerm_client_config.current.object_id
 }
+
+# Grant AKS managed identity permission to pull images from ACR
+resource "azurerm_role_assignment" "aks_acr_pull" {
+  count                = var.acr_id != "" ? 1 : 0
+  scope                = var.acr_id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_kubernetes_cluster.aks.kubelet_identity[0].object_id
+}

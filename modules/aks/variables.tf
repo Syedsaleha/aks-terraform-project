@@ -55,6 +55,12 @@ variable "create_role_assignment" {
   default     = false
 }
 
+variable "acr_id" {
+  description = "Azure Container Registry ID for AKS integration"
+  type        = string
+  default     = ""
+}
+
 variable "vm_size" {
   description = "VM size for AKS node pool. Defaults to Standard_D2s_v3 (available in most regions)."
   type        = string
