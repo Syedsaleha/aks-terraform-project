@@ -273,6 +273,10 @@ jobs:
           ACR_NAME=$(echo "${{ needs.build-and-push-images.outputs.acr-login-server }}" | cut -d'.' -f1)
           MYSQL_FQDN="${{ steps.get-mysql.outputs.mysql-fqdn }}"
           
+          echo "🔄 Updating manifests with actual values..."
+          echo "  ACR: $ACR_NAME"
+          echo "  MySQL FQDN: $MYSQL_FQDN"
+          
           # Update backend deployment
           sed -i "s|<ACR_NAME>\.azurecr\.io/book-review-backend:latest|${{ needs.build-and-push-images.outputs.backend-image }}|g" \
             ${{ env.K8S_PATH }}/deployments/backend-deployment.yaml
@@ -281,11 +285,26 @@ jobs:
           sed -i "s|<ACR_NAME>\.azurecr\.io/book-review-frontend:latest|${{ needs.build-and-push-images.outputs.frontend-image }}|g" \
             ${{ env.K8S_PATH }}/deployments/frontend-deployment.yaml
           
-          # Update ConfigMap
+          # Update ConfigMap with MySQL FQDN
           sed -i "s|<MYSQL_FQDN>|$MYSQL_FQDN|g" \
             ${{ env.K8S_PATH }}/configmaps/app-config.yaml
           
-          echo "✅ Kubernetes manifests updated"
+          # Verify replacements
+          echo ""
+          echo "📋 Verification - ConfigMap database_host:"
+          grep "database_host:" ${{ env.K8S_PATH }}/configmaps/app-config.yaml
+          
+          echo ""
+          echo "📋 Verification - Backend image:"
+          grep "image:" ${{ env.K8S_PATH }}/deployments/backend-deployment.yaml | head -1
+          
+          # Check if placeholder still exists
+          if grep -q "<MYSQL_FQDN>" ${{ env.K8S_PATH }}/configmaps/app-config.yaml; then
+            echo "❌ ERROR: MYSQL_FQDN placeholder not replaced!"
+            exit 1
+          fi
+          
+          echo "✅ Kubernetes manifests updated successfully"
       
       - name: Create Kubernetes Namespace
         run: |
