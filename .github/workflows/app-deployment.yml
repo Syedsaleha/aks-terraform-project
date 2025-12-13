@@ -353,13 +353,14 @@ jobs:
           kubectl apply -f ${{ env.K8S_PATH }}/deployments/backend-deployment.yaml
           kubectl apply -f ${{ env.K8S_PATH }}/services/backend-service.yaml
           
-          echo "⏳ Waiting for backend pods to be created..."
-          sleep 10
+          echo "⏳ Waiting for backend deployment to roll out..."
+          kubectl rollout status deployment/book-review-backend --timeout=180s || echo "⚠️ Rollout timeout - check debug output"
           
-          echo "⏳ Waiting for backend pods to be ready..."
-          kubectl wait --for=condition=ready pod -l component=backend --timeout=300s 2>/dev/null || echo "⚠️ Backend pods not ready yet, check debug output"
+          echo ""
+          echo "📊 Current backend pod status:"
+          kubectl get pods -l component=backend
           
-          echo "✅ Backend deployed"
+          echo "✅ Backend deployment applied"
       
       - name: Debug Backend Deployment
         if: always()
@@ -402,13 +403,14 @@ jobs:
           kubectl apply -f ${{ env.K8S_PATH }}/deployments/frontend-deployment.yaml
           kubectl apply -f ${{ env.K8S_PATH }}/services/frontend-service.yaml
           
-          echo "⏳ Waiting for frontend pods to be created..."
-          sleep 10
+          echo "⏳ Waiting for frontend deployment to roll out..."
+          kubectl rollout status deployment/book-review-frontend --timeout=180s || echo "⚠️ Rollout timeout - check debug output"
           
-          echo "⏳ Waiting for frontend pods to be ready..."
-          kubectl wait --for=condition=ready pod -l component=frontend --timeout=300s 2>/dev/null || echo "⚠️ Frontend pods not ready yet, check debug output"
+          echo ""
+          echo "📊 Current frontend pod status:"
+          kubectl get pods -l component=frontend
           
-          echo "✅ Frontend deployed"
+          echo "✅ Frontend deployment applied"
       
       - name: Get Application URL
         run: |
