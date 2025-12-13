@@ -236,11 +236,18 @@ jobs:
       - name: Install kubelogin
         run: |
           echo "📦 Installing kubelogin for Azure AD authentication..."
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.4/kubelogin-linux-amd64.zip
+          
+          # Download latest kubelogin
+          KUBELOGIN_VERSION="v0.0.34"
+          curl -LO "https://github.com/Azure/kubelogin/releases/download/${KUBELOGIN_VERSION}/kubelogin-linux-amd64.zip"
           unzip kubelogin-linux-amd64.zip
           sudo mv bin/linux_amd64/kubelogin /usr/local/bin/
           sudo chmod +x /usr/local/bin/kubelogin
+          
+          # Verify installation
           kubelogin --version
+          which kubelogin
+          
           echo "✅ kubelogin installed successfully"
       
       - name: Get AKS Credentials
