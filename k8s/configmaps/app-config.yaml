@@ -11,4 +11,4 @@ data:
   # Database configuration (non-sensitive)
   database_host: "<MYSQL_FQDN>"
   database_port: "3306"
-  database_name: "bookreview"
+  database_name: "book_review_db"
