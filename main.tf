@@ -62,6 +62,7 @@ module "keyvault" {
 
 # Grant AKS managed identity permission to pull images from ACR
 resource "azurerm_role_assignment" "aks_acr_pull" {
+  count                            = var.create_acr_role_assignment ? 1 : 0
   scope                            = module.acr.acr_id
   role_definition_name             = "AcrPull"
   principal_id                     = module.aks.kubelet_identity_object_id

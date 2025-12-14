@@ -59,3 +59,9 @@ variable "enable_private_aks_cluster" {
   description = "Enable private AKS cluster (API server accessible only via private network)"
   default     = true
 }
+
+variable "create_acr_role_assignment" {
+  type        = bool
+  description = "Whether to create ACR pull role assignment for AKS. Set to false if you lack Microsoft.Authorization/roleAssignments/write permissions."
+  default     = false
+}

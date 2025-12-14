@@ -183,6 +183,15 @@ jobs:
           echo "aks_cluster_name=$(terraform output -raw aks_cluster_name)" >> $GITHUB_OUTPUT
           echo "resource_group_name=$(terraform output -raw resource_group_name)" >> $GITHUB_OUTPUT
       
+      - name: Attach ACR to AKS
+        run: |
+          echo "🔗 Attaching ACR to AKS cluster..."
+          az aks update \
+            --name ${{ steps.tf-outputs.outputs.aks_cluster_name }} \
+            --resource-group ${{ steps.tf-outputs.outputs.resource_group_name }} \
+            --attach-acr ${{ steps.tf-outputs.outputs.acr_name }}
+          echo "✅ ACR successfully attached to AKS"
+      
       - name: Upload Terraform State Info
         uses: actions/upload-artifact@v4
         with:
