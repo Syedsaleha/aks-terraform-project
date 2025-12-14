@@ -19,21 +19,24 @@ resource "azurerm_mysql_flexible_server" "mysql" {
 
 # Private DNS Zone for MySQL Private Link
 resource "azurerm_private_dns_zone" "mysql" {
+  count               = var.enable_private_endpoint ? 1 : 0
   name                = "privatelink.mysql.database.azure.com"
   resource_group_name = var.resource_group_name
 }
 
 # Link Private DNS Zone to VNet
 resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
+  count                 = var.enable_private_endpoint ? 1 : 0
   name                  = "${var.project_name}-${var.environment}-mysql-dns-link"
   resource_group_name   = var.resource_group_name
-  private_dns_zone_name = azurerm_private_dns_zone.mysql.name
+  private_dns_zone_name = azurerm_private_dns_zone.mysql[0].name
   virtual_network_id    = var.vnet_id
   registration_enabled  = false
 }
 
 # Private endpoint to database subnet
 resource "azurerm_private_endpoint" "db_pe" {
+  count               = var.enable_private_endpoint ? 1 : 0
   name                = "${var.project_name}-${var.environment}-db-pe"
   location            = var.location
   resource_group_name = var.resource_group_name
@@ -48,7 +51,7 @@ resource "azurerm_private_endpoint" "db_pe" {
 
   private_dns_zone_group {
     name                 = "mysql-dns-zone-group"
-    private_dns_zone_ids = [azurerm_private_dns_zone.mysql.id]
+    private_dns_zone_ids = [azurerm_private_dns_zone.mysql[0].id]
   }
 
   depends_on = [azurerm_private_dns_zone_virtual_network_link.mysql]

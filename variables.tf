@@ -65,3 +65,9 @@ variable "create_acr_role_assignment" {
   description = "Whether to create ACR pull role assignment for AKS. Set to false if you lack Microsoft.Authorization/roleAssignments/write permissions."
   default     = false
 }
+
+variable "create_aks_admin_role_assignment" {
+  type        = bool
+  description = "Whether to create AKS admin role assignment for the service principal. Set to true to allow CI/CD pipelines to manage the cluster."
+  default     = true
+}

@@ -31,3 +31,9 @@ variable "mysql_sku_name" {
   # Use a provider-compatible SKU. Format: <tier>_<family>_<version>
   default = "GP_Standard_D2ds_v4"
 }
+
+variable "enable_private_endpoint" {
+  type        = bool
+  description = "Enable private endpoint for MySQL server"
+  default     = true
+}

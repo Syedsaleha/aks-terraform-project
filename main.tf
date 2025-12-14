@@ -18,19 +18,21 @@ module "aks" {
   subnet_ids             = module.network.subnet_ids
   resource_group_name    = module.network.resource_group_name
   enable_private_cluster = var.enable_private_aks_cluster
+  create_role_assignment = var.create_aks_admin_role_assignment
 }
 
 module "mysql" {
-  source               = "./modules/mysql"
-  project_name         = var.project_name
-  environment          = var.environment
-  location             = var.location
-  mysql_admin_username = var.mysql_admin_username
-  mysql_admin_password = var.mysql_admin_password
-  subnet_ids           = module.network.subnet_ids
-  resource_group_name  = module.network.resource_group_name
-  vnet_id              = module.network.vnet_id
-  unique_suffix        = local.unique_suffix
+  source                  = "./modules/mysql"
+  project_name            = var.project_name
+  environment             = var.environment
+  location                = var.location
+  mysql_admin_username    = var.mysql_admin_username
+  mysql_admin_password    = var.mysql_admin_password
+  subnet_ids              = module.network.subnet_ids
+  resource_group_name     = module.network.resource_group_name
+  vnet_id                 = module.network.vnet_id
+  unique_suffix           = local.unique_suffix
+  enable_private_endpoint = var.create_private_endpoints
 }
 
 module "acr" {
