@@ -94,13 +94,13 @@ resource "azurerm_network_security_rule" "aks_allow_vnet" {
 
 # Allow HTTP/HTTPS traffic from Internet to LoadBalancer
 resource "azurerm_network_security_rule" "aks_allow_http" {
-  count                  = contains(keys(var.subnets), "aks") ? 1 : 0
-  name                   = "${var.project_name}-${var.environment}-aks-allow-http"
-  priority               = 115
-  direction              = "Inbound"
-  access                 = "Allow"
-  protocol               = "Tcp"
-  source_port_range      = "*"
+  count                   = contains(keys(var.subnets), "aks") ? 1 : 0
+  name                    = "${var.project_name}-${var.environment}-aks-allow-http"
+  priority                = 115
+  direction               = "Inbound"
+  access                  = "Allow"
+  protocol                = "Tcp"
+  source_port_range       = "*"
   destination_port_ranges = ["80", "443"]
 
   source_address_prefix      = "Internet"
