@@ -218,8 +218,8 @@ jobs:
           # Copy package files
           COPY --from=builder /app/package.json ./package.json
           
-          # Copy public assets if they exist
-          COPY --from=builder /app/public ./public 2>/dev/null || true
+          # Copy public assets (ensured to exist in builder)
+          COPY --from=builder /app/public ./public
           
           # Copy .next folder (includes all build output and config)
           COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
@@ -230,6 +230,7 @@ jobs:
           USER nextjs
           EXPOSE 3000
           ENV PORT=3000
+          ENV HOSTNAME=0.0.0.0
           
           # Start Next.js in production mode
           CMD ["npm", "start"]
@@ -286,6 +287,7 @@ jobs:
           USER nextjs
           EXPOSE 3000
           ENV PORT=3000
+          ENV HOSTNAME=0.0.0.0
           
           # Start Next.js in production mode
           CMD ["npm", "start"]
