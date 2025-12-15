@@ -478,8 +478,12 @@ jobs:
           kubectl apply -f ${{ env.K8S_PATH }}/deployments/backend-deployment.yaml
           kubectl apply -f ${{ env.K8S_PATH }}/services/backend-service.yaml
           
+          # Force restart to pull latest image (in case tag hasn't changed)
+          echo "🔄 Forcing rollout restart to ensure latest image is used..."
+          kubectl rollout restart deployment/book-review-backend
+          
           echo "⏳ Waiting for backend deployment to roll out..."
-          kubectl rollout status deployment/book-review-backend --timeout=180s || echo "⚠️ Rollout timeout - check debug output"
+          kubectl rollout status deployment/book-review-backend --timeout=300s || echo "⚠️ Rollout timeout - check debug output"
           
           echo ""
           echo "📊 Current backend pod status:"
@@ -532,8 +536,12 @@ jobs:
           kubectl apply -f ${{ env.K8S_PATH }}/deployments/frontend-deployment.yaml
           kubectl apply -f ${{ env.K8S_PATH }}/services/frontend-service.yaml
           
+          # Force restart to pull latest image (in case tag hasn't changed)
+          echo "🔄 Forcing rollout restart to ensure latest image is used..."
+          kubectl rollout restart deployment/book-review-frontend
+          
           echo "⏳ Waiting for frontend deployment to roll out..."
-          kubectl rollout status deployment/book-review-frontend --timeout=180s || echo "⚠️ Rollout timeout - check debug output"
+          kubectl rollout status deployment/book-review-frontend --timeout=300s || echo "⚠️ Rollout timeout - check debug output"
           
           echo ""
           echo "📊 Current frontend pod status:"
