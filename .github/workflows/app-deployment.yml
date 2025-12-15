@@ -215,13 +215,16 @@ jobs:
           RUN addgroup --system --gid 1001 nodejs
           RUN adduser --system --uid 1001 nextjs
           
-          # Copy necessary files for runtime
-          COPY --from=builder /app/next.config.js ./
-          COPY --from=builder /app/public ./public
+          # Copy package files
           COPY --from=builder /app/package.json ./package.json
           
-          # Copy .next folder (includes all build output)
+          # Copy public assets if they exist
+          COPY --from=builder /app/public ./public 2>/dev/null || true
+          
+          # Copy .next folder (includes all build output and config)
           COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+          
+          # Copy node_modules for runtime dependencies
           COPY --from=builder /app/node_modules ./node_modules
           
           USER nextjs
@@ -265,13 +268,16 @@ jobs:
           RUN addgroup --system --gid 1001 nodejs
           RUN adduser --system --uid 1001 nextjs
           
-          # Copy necessary files for runtime
-          COPY --from=builder /app/next.config.js ./
-          COPY --from=builder /app/public ./public
+          # Copy package files
           COPY --from=builder /app/package.json ./package.json
           
-          # Copy .next folder (includes all build output)
+          # Copy public assets if they exist
+          COPY --from=builder /app/public ./public 2>/dev/null || true
+          
+          # Copy .next folder (includes all build output and config)
           COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+          
+          # Copy node_modules for runtime dependencies
           COPY --from=builder /app/node_modules ./node_modules
           
           USER nextjs
