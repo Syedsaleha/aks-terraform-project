@@ -325,10 +325,11 @@ jobs:
       
       - name: Create Kubernetes Secrets
         run: |
-          # Create or update database credentials secret
+          # Create or update database credentials and JWT secret
           kubectl create secret generic book-review-secrets \
             --from-literal=database_user=${{ secrets.MYSQL_ADMIN_USERNAME }} \
             --from-literal=database_password=${{ secrets.MYSQL_ADMIN_PASSWORD }} \
+            --from-literal=jwt_secret=${{ secrets.JWT_SECRET }} \
             --dry-run=client -o yaml | kubectl apply -f -
           
           echo "✅ Secrets created/updated"

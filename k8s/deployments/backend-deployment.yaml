@@ -50,6 +50,11 @@ spec:
             secretKeyRef:
               name: book-review-secrets
               key: database_password
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: book-review-secrets
+              key: jwt_secret
         - name: PORT
           value: "8080"
         - name: DB_DIALECT
@@ -63,17 +68,17 @@ spec:
             cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 8080
           initialDelaySeconds: 60
-          periodSeconds: 10
+          periodSeconds: 20
           timeoutSeconds: 5
           failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /ready
+            path: /
             port: 8080
           initialDelaySeconds: 30
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
