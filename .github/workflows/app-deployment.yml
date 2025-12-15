@@ -181,11 +181,99 @@ jobs:
           EXPOSE 80
           CMD ["nginx", "-g", "daemon off;"]
           EOF
+          else
+            echo "✅ Frontend directory found"
+            
+            # Check if Dockerfile exists, if not create a proper Next.js production Dockerfile
+            if [ ! -f "${{ env.FRONTEND_PATH }}/Dockerfile" ]; then
+              echo "📝 Creating production-ready Next.js Dockerfile..."
+              cat > ${{ env.FRONTEND_PATH }}/Dockerfile <<'EOF'
+          # Multi-stage build for Next.js application
+          FROM node:18-alpine AS deps
+          RUN apk add --no-cache libc6-compat
+          WORKDIR /app
+          COPY package*.json ./
+          RUN npm ci
+          
+          FROM node:18-alpine AS builder
+          WORKDIR /app
+          COPY --from=deps /app/node_modules ./node_modules
+          COPY . .
+          RUN npm run build
+          
+          FROM node:18-alpine AS runner
+          WORKDIR /app
+          ENV NODE_ENV=production
+          RUN addgroup --system --gid 1001 nodejs
+          RUN adduser --system --uid 1001 nextjs
+          
+          COPY --from=builder /app/public ./public
+          COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+          COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+          
+          USER nextjs
+          EXPOSE 3000
+          ENV PORT=3000
+          CMD ["node", "server.js"]
+          EOF
+              
+              # Update next.config.js to enable standalone output
+              if [ -f "${{ env.FRONTEND_PATH }}/next.config.js" ]; then
+                echo "📝 Ensuring standalone output is enabled in next.config.js..."
+                # Backup original config
+                cp "${{ env.FRONTEND_PATH }}/next.config.js" "${{ env.FRONTEND_PATH }}/next.config.js.bak"
+                
+                # Check if output: 'standalone' exists
+                if ! grep -q "output.*standalone" "${{ env.FRONTEND_PATH }}/next.config.js"; then
+                  echo "Adding standalone output configuration..."
+                  # This is a simple approach - for complex configs, manual update might be needed
+                  sed -i "s/module.exports = {/module.exports = {\n  output: 'standalone',/" "${{ env.FRONTEND_PATH }}/next.config.js"
+                fi
+              fi
+            else
+              echo "📝 Dockerfile exists, checking if it builds Next.js..."
+              # Check if Dockerfile includes build step
+              if ! grep -q "npm run build\|next build" "${{ env.FRONTEND_PATH }}/Dockerfile"; then
+                echo "⚠️ Existing Dockerfile may not build Next.js. Creating optimized version..."
+                mv "${{ env.FRONTEND_PATH }}/Dockerfile" "${{ env.FRONTEND_PATH }}/Dockerfile.original"
+                cat > ${{ env.FRONTEND_PATH }}/Dockerfile <<'EOF'
+          # Multi-stage build for Next.js application
+          FROM node:18-alpine AS deps
+          RUN apk add --no-cache libc6-compat
+          WORKDIR /app
+          COPY package*.json ./
+          RUN npm ci
+          
+          FROM node:18-alpine AS builder
+          WORKDIR /app
+          COPY --from=deps /app/node_modules ./node_modules
+          COPY . .
+          RUN npm run build
+          
+          FROM node:18-alpine AS runner
+          WORKDIR /app
+          ENV NODE_ENV=production
+          RUN addgroup --system --gid 1001 nodejs
+          RUN adduser --system --uid 1001 nextjs
+          
+          COPY --from=builder /app/public ./public
+          COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+          COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+          
+          USER nextjs
+          EXPOSE 3000
+          ENV PORT=3000
+          CMD ["node", "server.js"]
+          EOF
+              fi
+            fi
           fi
           
+          echo "🏗️ Building frontend Docker image..."
           docker build -t ${{ steps.get-infra.outputs.acr-login-server }}/book-review-frontend:${{ github.event.inputs.frontend_image_tag }} \
             ${{ env.FRONTEND_PATH }}
           
+          echo "📤 Pushing frontend image to ACR..."
           docker push ${{ steps.get-infra.outputs.acr-login-server }}/book-review-frontend:${{ github.event.inputs.frontend_image_tag }}
           
           echo "✅ Frontend image pushed successfully"
