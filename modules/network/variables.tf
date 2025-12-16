@@ -30,3 +30,8 @@ variable "enable_udr" {
   description = "Enable UDR for private subnets"
   default     = true
 }
+
+variable "dns_zone_name" {
+  description = "The DNS zone name to be used by the AKS module."
+  type        = string
+}

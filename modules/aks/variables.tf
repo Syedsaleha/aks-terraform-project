@@ -69,7 +69,7 @@ variable "enable_private_cluster" {
 variable "ingress_domain" {
   description = "The fully qualified domain name to assign to the AKS Ingress"
   type        = string
-  default     = ""  # Optional: can be overridden in root module
+  default     = "" # Optional: can be overridden in root module
 }
 
 variable "dns_zone_name" {

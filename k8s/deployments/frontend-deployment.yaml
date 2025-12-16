@@ -33,11 +33,11 @@ spec:
         env:
         - name: NODE_ENV
           value: "production"
-        - name: BACKEND_API_URL
+        - name: NEXT_PUBLIC_API_URL
           valueFrom:
             configMapKeyRef:
               name: book-review-config
-              key: backend_api_url
+              key: next_public_api_url
         resources:
           requests:
             memory: "256Mi"

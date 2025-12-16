@@ -6,6 +6,7 @@ module "network" {
   address_space = var.address_space
   subnets       = var.subnets
   enable_udr    = true
+  dns_zone_name = var.dns_zone_name
 }
 
 module "aks" {

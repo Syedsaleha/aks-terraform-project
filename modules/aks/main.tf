@@ -72,7 +72,7 @@ resource "azurerm_public_ip" "aks_ingress_ip" {
 # Azure DNS Zone (ROOT DOMAIN)
 # -----------------------------
 resource "azurerm_dns_zone" "book_review" {
-  name                = var.dns_zone_name   # bookreview.dev
+  name                = var.dns_zone_name # bookreview.dev
   resource_group_name = var.resource_group_name
 }
 
