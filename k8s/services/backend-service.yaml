@@ -16,4 +16,3 @@ spec:
     targetPort: 3001
     protocol: TCP
     name: http
-    appprotocol: http
