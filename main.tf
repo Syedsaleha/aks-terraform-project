@@ -19,6 +19,7 @@ module "aks" {
   resource_group_name    = module.network.resource_group_name
   enable_private_cluster = var.enable_private_aks_cluster
   create_role_assignment = var.create_aks_admin_role_assignment
+  dns_zone_name          = var.dns_zone_name
 }
 
 module "mysql" {

@@ -27,10 +27,6 @@ output "ingress_dns_name" {
   description = "Fully qualified domain name for the Ingress"
 }
 
-output "ingress_ip" {
-  value = azurerm_public_ip.aks_ingress_ip.ip_address
-}
-
 output "ingress_fqdn" {
   value = "${var.ingress_subdomain}.${var.dns_zone_name}"
 }
