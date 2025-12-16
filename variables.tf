@@ -83,8 +83,3 @@ variable "acr_sku" {
   type        = string
   default     = "Standard"
 }
-
-variable "dns_zone_name" {
-  description = "The DNS zone name to be used by the AKS module."
-  type        = string
-}

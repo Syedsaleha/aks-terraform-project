@@ -29,7 +29,7 @@ variable "aks_node_count" {
 variable "aks_min_count" {
   type        = number
   description = "Minimum number of nodes when auto-scaling is enabled"
-  default     = 1
+  default     = 2
 }
 
 variable "aks_max_count" {
@@ -64,16 +64,4 @@ variable "enable_private_cluster" {
   type        = bool
   description = "Enable private cluster (API server accessible only via private network)"
   default     = true
-}
-
-variable "ingress_domain" {
-  description = "The fully qualified domain name to assign to the AKS Ingress"
-  type        = string
-  default     = "" # Optional: can be overridden in root module
-}
-
-variable "ingress_subdomain" {
-  description = "Ingress subdomain (e.g. app)"
-  type        = string
-  default     = "app"
 }
