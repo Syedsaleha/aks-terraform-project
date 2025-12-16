@@ -72,11 +72,6 @@ variable "ingress_domain" {
   default     = "" # Optional: can be overridden in root module
 }
 
-variable "dns_zone_name" {
-  description = "Root DNS zone name (e.g. bookreview.dev)"
-  type        = string
-}
-
 variable "ingress_subdomain" {
   description = "Ingress subdomain (e.g. app)"
   type        = string

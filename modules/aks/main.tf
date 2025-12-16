@@ -67,22 +67,3 @@ resource "azurerm_public_ip" "aks_ingress_ip" {
   allocation_method   = "Static"
   sku                 = "Standard"
 }
-
-# -----------------------------
-# Azure DNS Zone (ROOT DOMAIN)
-# -----------------------------
-resource "azurerm_dns_zone" "book_review" {
-  name                = var.dns_zone_name # bookreview.dev
-  resource_group_name = var.resource_group_name
-}
-
-# -----------------------------
-# DNS A Record for Ingress
-# -----------------------------
-resource "azurerm_dns_a_record" "ingress" {
-  name                = var.ingress_subdomain # app
-  zone_name           = azurerm_dns_zone.book_review.name
-  resource_group_name = var.resource_group_name
-  ttl                 = 300
-  records             = [azurerm_public_ip.aks_ingress_ip.ip_address]
-}

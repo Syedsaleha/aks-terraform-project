@@ -22,11 +22,3 @@ output "ingress_ip" {
   description = "Static IP assigned to AKS Ingress"
 }
 
-output "ingress_dns_name" {
-  value       = "${azurerm_dns_a_record.ingress.name}.${azurerm_dns_zone.book_review.name}"
-  description = "Fully qualified domain name for the Ingress"
-}
-
-output "ingress_fqdn" {
-  value = "${var.ingress_subdomain}.${var.dns_zone_name}"
-}
