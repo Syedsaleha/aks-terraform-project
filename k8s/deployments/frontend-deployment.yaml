@@ -18,13 +18,12 @@ spec:
         app: book-review
         component: frontend
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
       - name: frontend
         image: <ACR_NAME>.azurecr.io/book-review-frontend:latest
         imagePullPolicy: Always
 
-        command: ["npx"]
-        args: ["next", "start", "-p", "3000", "-H", "0.0.0.0"]
 
         ports:
         - containerPort: 3000
@@ -33,11 +32,7 @@ spec:
         env:
         - name: NODE_ENV
           value: "production"
-        - name: NEXT_PUBLIC_API_URL
-          valueFrom:
-            configMapKeyRef:
-              name: book-review-config
-              key: next_public_api_url
+
         resources:
           requests:
             memory: "256Mi"
@@ -45,18 +40,21 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+
         readinessProbe:
           httpGet:
             path: /
             port: 3000
-          initialDelaySeconds: 30
+          initialDelaySeconds: 45
           periodSeconds: 10
           timeoutSeconds: 5
+          failureThreshold: 5
+
         livenessProbe:
           httpGet:
             path: /
             port: 3000
           initialDelaySeconds: 60
-          periodSeconds: 15
+          periodSeconds: 20
           timeoutSeconds: 10
           failureThreshold: 5

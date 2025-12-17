@@ -18,6 +18,7 @@ spec:
         app: book-review
         component: backend
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
       - name: backend
         image: <ACR_NAME>.azurecr.io/book-review-backend:latest
@@ -58,7 +59,6 @@ spec:
               key: jwt_secret
         - name: PORT
           value: "3001"
-
         - name: DB_DIALECT
           value: "mysql"
         - name: NODE_ENV
@@ -77,7 +77,7 @@ spec:
             cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /
+            path: /api/books
             port: 3001
           initialDelaySeconds: 60
           periodSeconds: 20
@@ -85,7 +85,7 @@ spec:
           failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /
+            path: /api/books
             port: 3001
           initialDelaySeconds: 30
           periodSeconds: 10
