@@ -304,8 +304,8 @@ jobs:
           fi
           
           echo "🏗️ Building frontend Docker image..."
-          docker build --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} docker build -t ${{ steps.get-infra.outputs.acr-login-server }}/book-review-frontend:${{ github.event.inputs.frontend_image_tag }} \
-            ${{ env.FRONTEND_PATH }}
+            docker build --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} -t ${{ steps.get-infra.outputs.acr-login-server }}/book-review-frontend:${{ github.event.inputs.frontend_image_tag }} \
+              -f frontend/Dockerfile ./frontend
           
           echo "📤 Pushing frontend image to ACR..."
           docker push ${{ steps.get-infra.outputs.acr-login-server }}/book-review-frontend:${{ github.event.inputs.frontend_image_tag }}
