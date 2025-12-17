@@ -26,3 +26,9 @@ variable "allowed_ip_ranges" {
   description = "List of allowed IP ranges for Key Vault firewall. Empty list denies all public access."
   default     = []
 }
+
+variable "vnet_id" {
+  type        = string
+  description = "VNet ID for Private DNS zone link"
+  default     = ""
+}

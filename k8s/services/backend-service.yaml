@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: book-review-backend
+  namespace: book-review-dev
   labels:
     app: book-review
     component: backend
@@ -11,7 +12,7 @@ spec:
     app: book-review
     component: backend
   ports:
-  - port: 8080
-    targetPort: 8080
+  - port: 3001
+    targetPort: 3001
     protocol: TCP
     name: http

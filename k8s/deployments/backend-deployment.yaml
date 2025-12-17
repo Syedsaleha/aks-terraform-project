@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: book-review-backend
+  namespace: book-review-dev
   labels:
     app: book-review
     component: backend
@@ -22,34 +23,51 @@ spec:
         image: <ACR_NAME>.azurecr.io/book-review-backend:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 8080
+        - containerPort: 3001
           name: http
         env:
-        - name: DATABASE_HOST
+        - name: DB_HOST
           valueFrom:
             configMapKeyRef:
               name: book-review-config
               key: database_host
-        - name: DATABASE_PORT
+        - name: DB_PORT
           valueFrom:
             configMapKeyRef:
               name: book-review-config
               key: database_port
-        - name: DATABASE_NAME
+        - name: DB_NAME
           valueFrom:
             configMapKeyRef:
               name: book-review-config
               key: database_name
-        - name: DATABASE_USER
+        - name: DB_USER
           valueFrom:
             secretKeyRef:
               name: book-review-secrets
               key: database_user
-        - name: DATABASE_PASSWORD
+        - name: DB_PASS
           valueFrom:
             secretKeyRef:
               name: book-review-secrets
               key: database_password
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: book-review-secrets
+              key: jwt_secret
+        - name: PORT
+          value: "3001"
+
+        - name: DB_DIALECT
+          value: "mysql"
+        - name: NODE_ENV
+          value: "production"
+        - name: ALLOWED_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: book-review-config
+              key: allowed_origins
         resources:
           requests:
             memory: "256Mi"
@@ -59,13 +77,17 @@ spec:
             cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
+            path: /
+            port: 3001
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
+            path: /
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5

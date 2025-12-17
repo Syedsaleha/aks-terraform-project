@@ -30,7 +30,27 @@ resource "azurerm_key_vault" "kv" {
   # Recommended access policy block can be added here if needed
 }
 
-# Optional Private Endpoint for Key Vault
+# Private DNS Zone for Key Vault Private Link
+resource "azurerm_private_dns_zone" "keyvault" {
+  count               = var.enable_private_endpoint ? 1 : 0
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = var.resource_group_name
+}
+
+# Link Private DNS Zone to VNet
+# This enables AKS pods to resolve the Key Vault private endpoint FQDN
+resource "azurerm_private_dns_zone_virtual_network_link" "keyvault" {
+  count                 = var.enable_private_endpoint ? 1 : 0
+  name                  = "${var.project_name}-${var.environment}-kv-dns-link"
+  resource_group_name   = var.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.keyvault[0].name
+  virtual_network_id    = var.vnet_id
+  registration_enabled  = false
+
+  depends_on = [azurerm_private_dns_zone.keyvault]
+}
+
+# Private Endpoint for Key Vault in dedicated private-endpoints subnet
 resource "azurerm_private_endpoint" "kv_pe" {
   count               = var.enable_private_endpoint ? 1 : 0
   name                = "${var.project_name}-${var.environment}-kv-pe"
@@ -44,8 +64,14 @@ resource "azurerm_private_endpoint" "kv_pe" {
     private_connection_resource_id = azurerm_key_vault.kv.id
     subresource_names              = ["vault"]
   }
-}
 
-# NOTE:
-# Private DNS zone for Key Vault privatelink is not created here.
-# If needed, manage private DNS outside this module or via a dedicated DNS module.
+  private_dns_zone_group {
+    name                 = "keyvault-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.keyvault[0].id]
+  }
+
+  depends_on = [
+    azurerm_private_dns_zone_virtual_network_link.keyvault,
+    azurerm_key_vault.kv
+  ]
+}

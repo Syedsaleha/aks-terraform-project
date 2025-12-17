@@ -12,9 +12,9 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = azurerm_resource_group.rg.name
 }
 
-# Create NSG for each subnet
+# Create NSG for each subnet (except private-endpoints - NSGs don't apply when network policies are disabled)
 resource "azurerm_network_security_group" "nsgs" {
-  for_each = var.subnets
+  for_each = { for k, v in var.subnets : k => v if k != "private-endpoints" }
 
   name                = "${var.project_name}-${var.environment}-${each.key}-nsg"
   location            = azurerm_resource_group.rg.location
@@ -28,36 +28,21 @@ resource "azurerm_subnet" "subnets" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = each.value.address_prefixes
+
+  # Disable network policies for private-endpoints subnet (required for private endpoints)
+  # Private endpoints bypass NSG/UDR rules for simplified connectivity
+  private_endpoint_network_policies = each.key == "private-endpoints" ? "Disabled" : "Enabled"
 }
 
-# Associate NSG with Subnets
+# Associate NSG with Subnets (except private-endpoints - not needed when network policies are disabled)
 resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" {
-  for_each                  = var.subnets
+  for_each                  = { for k, v in var.subnets : k => v if k != "private-endpoints" }
   subnet_id                 = azurerm_subnet.subnets[each.key].id
   network_security_group_id = azurerm_network_security_group.nsgs[each.key].id
 }
 
 # Network Security Rules
-# Allow DB (MySQL) traffic only from the AKS subnet to the database subnet
-resource "azurerm_network_security_rule" "db_allow_from_aks" {
-  count                  = contains(keys(var.subnets), "database") && contains(keys(var.subnets), "aks") ? 1 : 0
-  name                   = "${var.project_name}-${var.environment}-allow-db-from-aks"
-  priority               = 100
-  direction              = "Inbound"
-  access                 = "Allow"
-  protocol               = "Tcp"
-  source_port_range      = "*"
-  destination_port_range = "3306"
-
-  # Use the AKS subnet first prefix as the source CIDR
-  source_address_prefix      = azurerm_subnet.subnets["aks"].address_prefixes[0]
-  destination_address_prefix = azurerm_subnet.subnets["database"].address_prefixes[0]
-
-  network_security_group_name = azurerm_network_security_group.nsgs["database"].name
-  resource_group_name         = azurerm_resource_group.rg.name
-}
-
-# AKS inbound hardening: allow Azure LB and VNet, then deny Internet
+# AKS subnet NSG rules - simplified and non-overlapping
 resource "azurerm_network_security_rule" "aks_allow_azure_lb" {
   count                  = contains(keys(var.subnets), "aks") ? 1 : 0
   name                   = "${var.project_name}-${var.environment}-aks-allow-azurelb"
@@ -69,7 +54,7 @@ resource "azurerm_network_security_rule" "aks_allow_azure_lb" {
   destination_port_range = "*"
 
   source_address_prefix      = "AzureLoadBalancer"
-  destination_address_prefix = azurerm_subnet.subnets["aks"].address_prefixes[0]
+  destination_address_prefix = "*"
 
   network_security_group_name = azurerm_network_security_group.nsgs["aks"].name
   resource_group_name         = azurerm_resource_group.rg.name
@@ -86,16 +71,35 @@ resource "azurerm_network_security_rule" "aks_allow_vnet" {
   destination_port_range = "*"
 
   source_address_prefix      = "VirtualNetwork"
-  destination_address_prefix = azurerm_subnet.subnets["aks"].address_prefixes[0]
+  destination_address_prefix = "VirtualNetwork"
 
   network_security_group_name = azurerm_network_security_group.nsgs["aks"].name
   resource_group_name         = azurerm_resource_group.rg.name
 }
 
+# Allow HTTP/HTTPS traffic from Internet to Ingress Controller
+resource "azurerm_network_security_rule" "aks_allow_http_https" {
+  count                   = contains(keys(var.subnets), "aks") ? 1 : 0
+  name                    = "${var.project_name}-${var.environment}-aks-allow-http-https"
+  priority                = 200
+  direction               = "Inbound"
+  access                  = "Allow"
+  protocol                = "Tcp"
+  source_port_range       = "*"
+  destination_port_ranges = ["80", "443"]
+
+  source_address_prefix      = "Internet"
+  destination_address_prefix = "*"
+
+  network_security_group_name = azurerm_network_security_group.nsgs["aks"].name
+  resource_group_name         = azurerm_resource_group.rg.name
+}
+
+# Deny all other inbound Internet traffic
 resource "azurerm_network_security_rule" "aks_deny_internet" {
   count                  = contains(keys(var.subnets), "aks") ? 1 : 0
   name                   = "${var.project_name}-${var.environment}-aks-deny-internet"
-  priority               = 120
+  priority               = 4000
   direction              = "Inbound"
   access                 = "Deny"
   protocol               = "*"
@@ -103,16 +107,20 @@ resource "azurerm_network_security_rule" "aks_deny_internet" {
   destination_port_range = "*"
 
   source_address_prefix      = "Internet"
-  destination_address_prefix = azurerm_subnet.subnets["aks"].address_prefixes[0]
+  destination_address_prefix = "*"
 
   network_security_group_name = azurerm_network_security_group.nsgs["aks"].name
   resource_group_name         = azurerm_resource_group.rg.name
 }
 
+# Note: Private endpoints subnet has minimal NSG rules
+# Private endpoints bypass NSG rules by default (network policies disabled)
+# Security is enforced through VNet isolation, private DNS, and service-level authentication
+
 # Optional: User Defined Route (UDR) for private subnets
 resource "azurerm_route_table" "private" {
-  count               = var.enable_udr ? 2 : 0
-  name                = "${var.project_name}-${var.environment}-private-rt-${count.index + 1}"
+  count               = var.enable_udr ? 1 : 0
+  name                = "${var.project_name}-${var.environment}-private-rt"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 }
@@ -120,7 +128,7 @@ resource "azurerm_route_table" "private" {
 resource "azurerm_subnet_route_table_association" "private_assoc" {
   for_each       = { for k, v in azurerm_subnet.subnets : k => v if k == "aks" || k == "database" }
   subnet_id      = each.value.id
-  route_table_id = element(azurerm_route_table.private[*].id, 0) # simple association, can customize per subnet
+  route_table_id = azurerm_route_table.private[0].id
 }
 
 # NAT Gateway resources for egress (created only when an `egress` subnet is defined)
@@ -165,4 +173,3 @@ resource "azurerm_subnet_nat_gateway_association" "aks_assoc" {
   nat_gateway_id = azurerm_nat_gateway.nat[0].id
   #nat_gateway_id = azurerm_nat_gateway.nat[0].id
 }
-

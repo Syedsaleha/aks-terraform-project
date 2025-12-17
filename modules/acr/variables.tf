@@ -25,6 +25,12 @@ variable "enable_private_endpoint" {
   default     = false
 }
 
+variable "vnet_id" {
+  type        = string
+  description = "VNet ID for Private DNS zone link"
+  default     = ""
+}
+
 variable "secondary_location" {
   description = "Secondary Azure region for geo-replication"
   type        = string

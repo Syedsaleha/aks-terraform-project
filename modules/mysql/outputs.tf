@@ -7,5 +7,5 @@ output "mysql_fqdn" {
 }
 
 output "mysql_private_endpoint_id" {
-  value = azurerm_private_endpoint.db_pe.id
+  value = var.enable_private_endpoint ? azurerm_private_endpoint.db_pe[0].id : null
 }

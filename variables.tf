@@ -59,3 +59,27 @@ variable "enable_private_aks_cluster" {
   description = "Enable private AKS cluster (API server accessible only via private network)"
   default     = true
 }
+
+variable "create_acr_role_assignment" {
+  type        = bool
+  description = "Whether to create ACR pull role assignment for AKS. Set to false if you lack Microsoft.Authorization/roleAssignments/write permissions."
+  default     = false
+}
+
+variable "create_aks_admin_role_assignment" {
+  type        = bool
+  description = "Whether to create AKS admin role assignment for the service principal. Set to true to allow CI/CD pipelines to manage the cluster."
+  default     = true
+}
+
+variable "secondary_location" {
+  description = "Secondary Azure region for ACR geo-replication"
+  type        = string
+  default     = "eastus2"
+}
+
+variable "acr_sku" {
+  description = "SKU for Azure Container Registry. Use 'Premium' for geo-replication."
+  type        = string
+  default     = "Standard"
+}

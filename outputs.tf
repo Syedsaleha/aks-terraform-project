@@ -47,3 +47,8 @@ output "vnet_id" {
 output "subnet_ids" {
   value = module.network.subnet_ids
 }
+
+output "aks_ingress_ip" {
+  value       = module.aks.ingress_ip
+  description = "AKS Ingress static IP from AKS module"
+}

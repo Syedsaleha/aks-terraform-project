@@ -4,40 +4,61 @@ resource "azurerm_mysql_flexible_server" "mysql" {
   resource_group_name    = var.resource_group_name
   administrator_login    = var.mysql_admin_username
   administrator_password = var.mysql_admin_password
-  # Use a provider-compatible MySQL version and SKU. Adjust `mysql_sku_name` in
-  # `variables.tf` if you need a different SKU.
-  version  = "8.0.21"
-  sku_name = var.mysql_sku_name
-
+  version                = "8.0.21"
+  sku_name               = var.mysql_sku_name
 
   backup_retention_days        = 7
   geo_redundant_backup_enabled = false
+}
 
-  # `public_network_access_enabled` is managed by the provider and cannot be set
-  # directly in some provider versions, so remove explicit configuration.
+# Create the database
+resource "azurerm_mysql_flexible_database" "book_review_db" {
+  name                = "book_review_db"
+  resource_group_name = var.resource_group_name
+  server_name         = azurerm_mysql_flexible_server.mysql.name
+  charset             = "utf8mb4"
+  collation           = "utf8mb4_unicode_ci"
+}
+
+# Firewall rule to allow Azure services (when not using private endpoint)
+resource "azurerm_mysql_flexible_server_firewall_rule" "allow_azure_services" {
+  count               = var.enable_private_endpoint ? 0 : 1
+  name                = "AllowAzureServices"
+  resource_group_name = var.resource_group_name
+  server_name         = azurerm_mysql_flexible_server.mysql.name
+  start_ip_address    = "0.0.0.0"
+  end_ip_address      = "0.0.0.0"
 }
 
 # Private DNS Zone for MySQL Private Link
 resource "azurerm_private_dns_zone" "mysql" {
+  count               = var.enable_private_endpoint ? 1 : 0
   name                = "privatelink.mysql.database.azure.com"
   resource_group_name = var.resource_group_name
 }
 
 # Link Private DNS Zone to VNet
+# This enables AKS pods to resolve the private endpoint FQDN
 resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
+  count                 = var.enable_private_endpoint ? 1 : 0
   name                  = "${var.project_name}-${var.environment}-mysql-dns-link"
   resource_group_name   = var.resource_group_name
-  private_dns_zone_name = azurerm_private_dns_zone.mysql.name
+  private_dns_zone_name = azurerm_private_dns_zone.mysql[0].name
   virtual_network_id    = var.vnet_id
   registration_enabled  = false
+
+  # Ensure DNS zone exists before linking
+  depends_on = [azurerm_private_dns_zone.mysql]
 }
 
-# Private endpoint to database subnet
+# Private endpoint in dedicated private-endpoint subnet
+# Separates private endpoint resources from workload subnets for better security segmentation
 resource "azurerm_private_endpoint" "db_pe" {
+  count               = var.enable_private_endpoint ? 1 : 0
   name                = "${var.project_name}-${var.environment}-db-pe"
   location            = var.location
   resource_group_name = var.resource_group_name
-  subnet_id           = var.subnet_ids["database"]
+  subnet_id           = var.subnet_ids["private-endpoints"]
 
   private_service_connection {
     name                           = "${var.project_name}-${var.environment}-db-psc"
@@ -48,8 +69,12 @@ resource "azurerm_private_endpoint" "db_pe" {
 
   private_dns_zone_group {
     name                 = "mysql-dns-zone-group"
-    private_dns_zone_ids = [azurerm_private_dns_zone.mysql.id]
+    private_dns_zone_ids = [azurerm_private_dns_zone.mysql[0].id]
   }
 
-  depends_on = [azurerm_private_dns_zone_virtual_network_link.mysql]
+  # Ensure DNS is fully configured before creating private endpoint
+  depends_on = [
+    azurerm_private_dns_zone_virtual_network_link.mysql,
+    azurerm_mysql_flexible_server.mysql
+  ]
 }

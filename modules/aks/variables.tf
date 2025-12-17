@@ -29,7 +29,7 @@ variable "aks_node_count" {
 variable "aks_min_count" {
   type        = number
   description = "Minimum number of nodes when auto-scaling is enabled"
-  default     = 1
+  default     = 2
 }
 
 variable "aks_max_count" {
@@ -47,6 +47,12 @@ variable "availability_zones" {
   description = "Availability zones for AKS node pool. Leave empty for regions without AZ support."
   type        = list(string)
   default     = []
+}
+
+variable "create_role_assignment" {
+  description = "Whether to create admin role assignment. Set to false if service principal lacks permissions."
+  type        = bool
+  default     = false
 }
 
 variable "vm_size" {

@@ -110,7 +110,7 @@ jobs:
       
       - name: Terraform Plan
         run: |
-          terraform plan \
+          terraform plan -lock-timeout=5m \
             -var-file="envs/${{ steps.set-env.outputs.environment }}/terraform.tfvars" \
             -out=tfplan
       
@@ -163,14 +163,14 @@ jobs:
       
       - name: Terraform Init
         run: |
-          terraform init \
+          terraform init -reconfigure \
             -backend-config="resource_group_name=${{ secrets.TF_BACKEND_RESOURCE_GROUP }}" \
             -backend-config="storage_account_name=${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}" \
             -backend-config="container_name=${{ secrets.TF_BACKEND_CONTAINER }}" \
             -backend-config="key=${{ steps.set-env.outputs.environment }}/terraform.tfstate"
       
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -auto-approve -lock-timeout=5m tfplan
       
       - name: Export Terraform Outputs
         id: tf-outputs
@@ -183,6 +183,47 @@ jobs:
           echo "aks_cluster_name=$(terraform output -raw aks_cluster_name)" >> $GITHUB_OUTPUT
           echo "resource_group_name=$(terraform output -raw resource_group_name)" >> $GITHUB_OUTPUT
       
+      - name: Attach ACR to AKS
+        continue-on-error: true
+        id: attach-acr
+        run: |
+          echo "🔗 Attempting to attach ACR to AKS cluster..."
+          if az aks update \
+            --name ${{ steps.tf-outputs.outputs.aks_cluster_name }} \
+            --resource-group ${{ steps.tf-outputs.outputs.resource_group_name }} \
+            --attach-acr ${{ steps.tf-outputs.outputs.acr_name }}; then
+            echo "✅ ACR successfully attached to AKS"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Could not attach ACR automatically (requires Owner permissions)"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+      
+      - name: ACR Manual Setup Instructions
+        if: steps.attach-acr.outputs.success == 'false'
+        run: |
+          echo "⚠️ =========================================="
+          echo "⚠️  MANUAL STEP REQUIRED"
+          echo "⚠️ =========================================="
+          echo ""
+          echo "The service principal lacks permissions to attach ACR to AKS."
+          echo "Please run ONE of these commands manually:"
+          echo ""
+          echo "Option 1 - Using Azure CLI:"
+          echo "  az aks update \\"
+          echo "    --name ${{ steps.tf-outputs.outputs.aks_cluster_name }} \\"
+          echo "    --resource-group ${{ steps.tf-outputs.outputs.resource_group_name }} \\"
+          echo "    --attach-acr ${{ steps.tf-outputs.outputs.acr_name }}"
+          echo ""
+          echo "Option 2 - Via Azure Portal:"
+          echo "  1. Go to ACR: ${{ steps.tf-outputs.outputs.acr_name }}"
+          echo "  2. Access Control (IAM) → Add role assignment"
+          echo "  3. Role: AcrPull"
+          echo "  4. Assign to: ${{ steps.tf-outputs.outputs.aks_cluster_name }}-agentpool managed identity"
+          echo ""
+          echo "⚠️ =========================================="
+      
       - name: Upload Terraform State Info
         uses: actions/upload-artifact@v4
         with:
@@ -191,6 +232,73 @@ jobs:
             terraform-outputs.json
             terraform.tfstate
           retention-days: 7
+      
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.32.0'
+      
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ steps.tf-outputs.outputs.resource_group_name }} \
+            --name ${{ steps.tf-outputs.outputs.aks_cluster_name }} \
+            --admin \
+            --overwrite-existing
+      
+      - name: Install NGINX Ingress Controller
+        run: |
+          echo "📦 Installing NGINX Ingress Controller..."
+          
+          # Check if already installed
+          if kubectl get namespace ingress-nginx &>/dev/null; then
+            echo "⚠️ NGINX Ingress Controller namespace already exists"
+            echo "🔄 Checking deployment status..."
+            kubectl get pods -n ingress-nginx
+          else
+            echo "🚀 Installing NGINX Ingress Controller..."
+            kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+          fi
+          
+          # Wait for the controller to be ready
+          echo "⏳ Waiting for Ingress Controller to be ready..."
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=300s || true
+          
+          echo "✅ Checking Ingress Controller status..."
+          kubectl get pods -n ingress-nginx
+          kubectl get svc -n ingress-nginx ingress-nginx-controller
+      
+      - name: Get Ingress External IP
+        id: ingress-ip
+        run: |
+          echo "⏳ Waiting for LoadBalancer IP assignment..."
+          for i in {1..30}; do
+            EXTERNAL_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+            if [ -n "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "null" ]; then
+              echo "✅ Ingress Controller External IP: $EXTERNAL_IP"
+              echo "ingress_ip=$EXTERNAL_IP" >> $GITHUB_OUTPUT
+              break
+            fi
+            echo "Waiting for IP assignment... (attempt $i/30)"
+            sleep 10
+          done
+          
+          if [ -z "$EXTERNAL_IP" ] || [ "$EXTERNAL_IP" == "null" ]; then
+            echo "⚠️ LoadBalancer IP not yet assigned. It may take a few more minutes."
+            echo "ingress_ip=pending" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create Ingress Summary
+        if: steps.ingress-ip.outputs.ingress_ip != 'pending'
+        run: |
+          echo "## 🌐 Ingress Controller Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**External IP:** \`${{ steps.ingress-ip.outputs.ingress_ip }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Access your applications via this IP once Ingress resources are created." >> $GITHUB_STEP_SUMMARY
       
       - name: Trigger Application Deployment
         if: success()

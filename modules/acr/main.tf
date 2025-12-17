@@ -28,7 +28,27 @@ resource "azurerm_container_registry" "acr" {
   }
 }
 
-# Optional the Private Endpoint for ACR
+# Private DNS Zone for ACR Private Link
+resource "azurerm_private_dns_zone" "acr" {
+  count               = var.enable_private_endpoint ? 1 : 0
+  name                = "privatelink.azurecr.io"
+  resource_group_name = var.resource_group_name
+}
+
+# Link Private DNS Zone to VNet
+# This enables AKS pods to resolve the ACR private endpoint FQDN
+resource "azurerm_private_dns_zone_virtual_network_link" "acr" {
+  count                 = var.enable_private_endpoint ? 1 : 0
+  name                  = "${var.project_name}-${var.environment}-acr-dns-link"
+  resource_group_name   = var.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.acr[0].name
+  virtual_network_id    = var.vnet_id
+  registration_enabled  = false
+
+  depends_on = [azurerm_private_dns_zone.acr]
+}
+
+# Private Endpoint for ACR in dedicated private-endpoints subnet
 resource "azurerm_private_endpoint" "acr_pe" {
   count               = var.enable_private_endpoint ? 1 : 0
   name                = "${var.project_name}-${var.environment}-acr-pe"
@@ -42,4 +62,14 @@ resource "azurerm_private_endpoint" "acr_pe" {
     private_connection_resource_id = azurerm_container_registry.acr.id
     subresource_names              = ["registry"]
   }
+
+  private_dns_zone_group {
+    name                 = "acr-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.acr[0].id]
+  }
+
+  depends_on = [
+    azurerm_private_dns_zone_virtual_network_link.acr,
+    azurerm_container_registry.acr
+  ]
 }

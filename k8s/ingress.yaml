@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: book-review-ingress
+  namespace: book-review-dev
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+
+      # ✅ Backend API
+      - path: /api(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: book-review-backend
+            port:
+              number: 3001
+
+      # ✅ Next.js static assets (CRITICAL)
+      - path: /_next(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: book-review-frontend
+            port:
+              number: 3000
+
+      # ✅ Frontend pages
+      - path: /(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: book-review-frontend
+            port:
+              number: 3000

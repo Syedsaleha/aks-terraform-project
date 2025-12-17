@@ -18,19 +18,22 @@ module "aks" {
   subnet_ids             = module.network.subnet_ids
   resource_group_name    = module.network.resource_group_name
   enable_private_cluster = var.enable_private_aks_cluster
+  create_role_assignment = var.create_aks_admin_role_assignment
+
 }
 
 module "mysql" {
-  source               = "./modules/mysql"
-  project_name         = var.project_name
-  environment          = var.environment
-  location             = var.location
-  mysql_admin_username = var.mysql_admin_username
-  mysql_admin_password = var.mysql_admin_password
-  subnet_ids           = module.network.subnet_ids
-  resource_group_name  = module.network.resource_group_name
-  vnet_id              = module.network.vnet_id
-  unique_suffix        = local.unique_suffix
+  source                  = "./modules/mysql"
+  project_name            = var.project_name
+  environment             = var.environment
+  location                = var.location
+  mysql_admin_username    = var.mysql_admin_username
+  mysql_admin_password    = var.mysql_admin_password
+  subnet_ids              = module.network.subnet_ids
+  resource_group_name     = module.network.resource_group_name
+  vnet_id                 = module.network.vnet_id
+  unique_suffix           = local.unique_suffix
+  enable_private_endpoint = var.create_private_endpoints
 }
 
 module "acr" {
@@ -38,8 +41,11 @@ module "acr" {
   project_name            = var.project_name
   environment             = var.environment
   location                = var.location
+  secondary_location      = var.secondary_location
+  acr_sku                 = var.acr_sku
   resource_group_name     = module.network.resource_group_name
-  private_subnet_id       = lookup(module.network.subnet_ids, "aks", "")
+  private_subnet_id       = lookup(module.network.subnet_ids, "private-endpoints", "")
+  vnet_id                 = module.network.vnet_id
   enable_private_endpoint = var.create_private_endpoints
   unique_suffix           = local.unique_suffix
 }
@@ -55,7 +61,17 @@ module "keyvault" {
     environment = var.environment
     project     = var.project_name
   }
-  private_subnet_id       = lookup(module.network.subnet_ids, "aks", "")
+  private_subnet_id       = lookup(module.network.subnet_ids, "private-endpoints", "")
+  vnet_id                 = module.network.vnet_id
   enable_private_endpoint = var.create_private_endpoints
   allowed_ip_ranges       = [] # Empty list for now, can be configured per environment
+}
+
+# Grant AKS managed identity permission to pull images from ACR
+resource "azurerm_role_assignment" "aks_acr_pull" {
+  count                            = var.create_acr_role_assignment ? 1 : 0
+  scope                            = module.acr.acr_id
+  role_definition_name             = "AcrPull"
+  principal_id                     = module.aks.kubelet_identity_object_id
+  skip_service_principal_aad_check = true
 }

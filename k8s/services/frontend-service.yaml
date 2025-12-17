@@ -2,16 +2,17 @@ apiVersion: v1
 kind: Service
 metadata:
   name: book-review-frontend
+  namespace: book-review-dev
   labels:
     app: book-review
     component: frontend
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: book-review
     component: frontend
   ports:
-  - port: 80
-    targetPort: 80
+  - port: 3000
+    targetPort: 3000
     protocol: TCP
     name: http
