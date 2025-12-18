@@ -83,6 +83,9 @@ jobs:
           git clone --branch ${{ github.event.inputs.app_branch }} --depth 1 \
             https://github.com/${{ github.event.inputs.app_repository }}.git ./app
 
+      - name: Login to ACR
+        run: az acr login --name ${{ steps.get-infra.outputs.acr-name }}
+
       - name: Build & Push Backend Image
         id: build-backend
         run: |
