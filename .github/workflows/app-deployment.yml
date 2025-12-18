@@ -12,23 +12,24 @@ on:
           - stage
           - prod
       frontend_image_tag:
-        description: 'Frontend Image Tag'
+        description: 'Frontend Docker image tag'
         required: false
         default: 'latest'
       backend_image_tag:
-        description: 'Backend Image Tag'
+        description: 'Backend Docker image tag'
         required: false
         default: 'latest'
-      run_id:
-        description: 'Infrastructure workflow run ID (auto-filled)'
-        required: false
       app_repository:
-        description: 'Application GitHub Repository (owner/repo)'
-        required: true
+        description: 'Remote GitHub repo for app (owner/repo)'
+        required: false
+        default: 'pravinmishraaws/book-review-app'
       app_branch:
-        description: 'Application Repository Branch'
+        description: 'Branch of the app repository'
         required: false
         default: 'main'
+      run_id:
+        description: 'Infra workflow run ID (for fetching Terraform state)'
+        required: false
 
 env:
   K8S_PATH: './k8s'
