@@ -51,8 +51,8 @@ jobs:
       aks-cluster-name: ${{ steps.get-infra.outputs.aks-cluster-name }}
       resource-group: ${{ steps.get-infra.outputs.resource-group }}
       mysql-fqdn: ${{ steps.get-infra.outputs.mysql-fqdn }}
-      frontend-image: ${{ steps.get-infra.outputs.acr-login-server }}/book-review-frontend:${{ github.event.inputs.frontend_image_tag }}
-      backend-image: ${{ steps.get-infra.outputs.acr-login-server }}/book-review-backend:${{ github.event.inputs.backend_image_tag }}
+      frontend-image: ${{ steps.get-infra.outputs.acr-login-server }}/book-review-frontend
+      backend-image: ${{ steps.get-infra.outputs.acr-login-server }}/book-review-backend
 
     steps:
 
