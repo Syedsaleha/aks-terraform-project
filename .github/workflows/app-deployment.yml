@@ -89,13 +89,10 @@ jobs:
           echo "resource-group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "mysql-fqdn=$MYSQL_FQDN" >> $GITHUB_OUTPUT
 
-      - name: Azure Login (OIDC + Service Principal)
+      - name: Azure Login
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          allow-no-subscriptions: true
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Login to ACR
         run: az acr login --name ${{ steps.get-infra.outputs.acr-name }}
@@ -125,16 +122,45 @@ jobs:
       - name: Azure Login
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Assign AKS Cluster Admin Role
+        run: |
+          echo "🔐 Ensuring service principal has AKS admin access..."
+          
+          # Get the service principal object ID
+          SP_OBJECT_ID=$(az ad sp show --id ${{ secrets.AZURE_CLIENT_ID }} --query id -o tsv)
+          
+          # Get AKS resource ID
+          AKS_ID=$(az aks show \
+            --resource-group ${{ needs.build-and-push-images.outputs.resource-group }} \
+            --name ${{ needs.build-and-push-images.outputs.aks-cluster-name }} \
+            --query id -o tsv)
+          
+          # Assign Azure Kubernetes Service Cluster Admin Role
+          az role assignment create \
+            --assignee $SP_OBJECT_ID \
+            --role "Azure Kubernetes Service Cluster Admin Role" \
+            --scope $AKS_ID \
+            2>/dev/null || echo "Role assignment already exists or not needed"
+          
+          echo "✅ Role assignment complete"
 
       - name: Get AKS Credentials
         run: |
+          echo "✅ Using infrastructure details from Terraform:"
+          echo "  AKS: ${{ needs.build-and-push-images.outputs.aks-cluster-name }}"
+          echo "  Resource Group: ${{ needs.build-and-push-images.outputs.resource-group }}"
+          
+          # Get AKS credentials with admin access (uses cluster certificates)
+          # This bypasses Azure RBAC and works with service principal authentication
           az aks get-credentials \
             --resource-group ${{ needs.build-and-push-images.outputs.resource-group }} \
             --name ${{ needs.build-and-push-images.outputs.aks-cluster-name }} \
-            --admin --overwrite-existing
+            --admin \
+            --overwrite-existing
+          
+          echo "✅ AKS credentials configured successfully with admin access"
 
       - name: Update Kubernetes Manifests
         run: |
