@@ -45,3 +45,7 @@ nodeExporter:
 
 kubeStateMetrics:
   enabled: true
+
+blackboxExporter:
+  enabled: true
+

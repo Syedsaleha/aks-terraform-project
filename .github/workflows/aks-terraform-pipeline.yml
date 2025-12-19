@@ -90,6 +90,16 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Slack Notification - Deployment Started
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+          "text": "🚀 *Deployment Started*\n\n*Project:* AKS IDP – Book Review Platform\n*Environment:* ${{ github.event.inputs.environment || 'dev' }}\n*Triggered By:* ${{ github.actor }}\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* `${{ github.sha }}`\n\n⏳ Infrastructure provisioning has begun."
+          }' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+
       
       - name: Set Environment
         id: set-env
@@ -157,7 +167,7 @@ jobs:
           fi
       
       - name: Download Plan
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: tfplan-${{ steps.set-env.outputs.environment }}
       
@@ -300,6 +310,59 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Access your applications via this IP once Ingress resources are created." >> $GITHUB_STEP_SUMMARY
       
+      # Install Helm
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      # Add Prometheus Helm repo
+      - name: Add Prometheus Helm repo
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+      
+      # Deploy Prometheus + Grafana
+      - name: Deploy Monitoring Stack
+        run: |
+          helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+            --namespace monitoring --create-namespace \
+            -f monitoring/values.yaml \
+            --set grafana.adminPassword=${{ secrets.GRAFANA_PASSWORD }} \
+            --wait
+      
+      # Wait until all Prometheus + Grafana pods are ready
+      - name: Wait for Monitoring Pods
+        run: |
+          kubectl wait --namespace monitoring \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/instance=prometheus \
+            --timeout=300s
+          kubectl wait --namespace monitoring \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/instance=grafana \
+            --timeout=300s 
+
+      # Set Monitoring URLs and Pods
+      - name: Set Monitoring URLs and Pods
+        run: |
+          export GRAFANA_URL=$(kubectl get svc prometheus-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          export PROM_URL=$(kubectl get svc prometheus-kube-prometheus-prometheus -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          export MON_PODS=$(kubectl get pods -n monitoring -o custom-columns=":metadata.name,:status.phase")
+          echo "GRAFANA_URL=$GRAFANA_URL" >> $GITHUB_ENV
+          echo "PROM_URL=$PROM_URL" >> $GITHUB_ENV
+          echo "MON_PODS=$MON_PODS" >> $GITHUB_ENV
+      
+      # 🔟 Send Slack notification for infra + monitoring success
+      - name: Slack Notification - Deployment Success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+           payload: |
+            {
+            "text": "✅ *Infra + Monitoring Deployment Successful!*\n\n*Environment:* dev\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n\n*📊 Monitoring URLs:*\n• Grafana: http://${GRAFANA_URL}:3000\n• Prometheus: http://${PROM_URL}:9090\n\n*🟢 Monitoring Pod Status:*\n${MON_PODS}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - name: Trigger Application Deployment
         if: success()
         continue-on-error: true
@@ -327,3 +390,16 @@ jobs:
               console.log(`   This is expected if the workflow doesn't exist on branch: ${ref}`);
               console.log(`   You can manually trigger the deployment from the Actions tab once merged`);
             }
+
+
+      # Slack notification on failure
+      - name: Slack Notification - Deployment Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+           {
+             "text": "❌ *Infra + Monitoring Deployment Failed!*\n\n*Environment:* dev\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n*Triggered By:* ${{ github.actor }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* `${{ github.sha }}`\n\n⚠️ Please check the GitHub Actions logs for details."
+           }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
