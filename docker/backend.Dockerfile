@@ -9,7 +9,7 @@ COPY backend/package*.json ./
 RUN npm install --omit=dev
 
 # Copy application code
-COPY backend .
+COPY . .
 
 # Environment
 ENV NODE_ENV=production
