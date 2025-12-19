@@ -20,4 +20,4 @@ USER appuser
 
 EXPOSE 3001
 
-CMD ["node", "server.js"]
+CMD ["node", "/src/server.js"]
