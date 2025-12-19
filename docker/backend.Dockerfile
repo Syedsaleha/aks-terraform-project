@@ -1,23 +1,21 @@
 FROM node:18-alpine
 
-# Create non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
 WORKDIR /app
 
-# Copy package files first (layer caching)
-COPY package*.json ./
+# Copy package files
+COPY backend/package*.json ./
 
-RUN npm ci --only=production || true
+# Install dependencies (lockfile may not exist)
+RUN npm install --omit=dev
 
-# Copy application source
-COPY . .
+# Copy application code
+COPY backend .
 
-# Change ownership
-RUN chown -R appuser:appgroup /app
-
-USER appuser
+# Environment
+ENV NODE_ENV=production
+ENV PORT=3001
 
 EXPOSE 3001
 
+# ✅ Run the actual entry file
 CMD ["node", "index.js"]

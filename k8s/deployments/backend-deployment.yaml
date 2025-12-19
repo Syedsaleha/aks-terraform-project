@@ -23,7 +23,7 @@ spec:
       containers:
         - name: backend
           image: cloudprojdevacr01b0dd.azurecr.io/book-review-backend:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
 
           ports:
             - name: http
@@ -82,27 +82,31 @@ spec:
               memory: "512Mi"
 
           startupProbe:
-            tcpSocket:
+            httpGet:
+              path: /api
               port: 3001
             failureThreshold: 30
             periodSeconds: 10
 
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /api
               port: 3001
             initialDelaySeconds: 20
             periodSeconds: 10
 
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /api
               port: 3001
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 20
 
-          lifecycle:
-            preStop:
-              exec:
-                command: ["sh", "-c", "sleep 10"]
+
+          # lifecycle:
+          #   preStop:
+          #     exec:
+          #       command: ["sh", "-c", "sleep 10"]
 
           # securityContext:
           #   runAsNonRoot: true
