@@ -22,7 +22,7 @@ spec:
 
       containers:
         - name: backend
-          image: cloudprojdevacre5f880.azurecr.io/book-review-backend:latest
+          image: cloudprojdevacrea0ee3.azurecr.io/book-review-backend:latest
           imagePullPolicy: Always
 
           ports:
