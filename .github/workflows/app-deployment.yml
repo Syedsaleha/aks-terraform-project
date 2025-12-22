@@ -59,6 +59,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Slack Notification - App Deployment Started
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+         payload: |
+           {
+              "text": "🚀 *Application Deployment Started*\n\n*Project:* Book Review Platform\n*Environment:* ${{ github.event.inputs.environment || 'dev' }}\n*Triggered By:* ${{ github.actor }}\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* `${{ github.sha }}`\n\n⏳ Application build and deployment to AKS has begun."
+           }
+        env:
+            SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
       
       - name: Download Terraform State
         uses: actions/download-artifact@v4
@@ -527,6 +538,31 @@ jobs:
           echo "🌐 Application URL: http://app.berryexcel.online"
           echo "🔗 Backend API: http://app.berryexcel.online/api"
       
+      - name: Slack Notification - App Deployment Success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ *Application Deployment Successful!*\n\n*Project:* Book Review Platform\n*Environment:* ${{ github.event.inputs.environment || 'dev' }}\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n\n🌐 *Application Access:*\n• Frontend: https://app.berryexcel.online\n• Backend API: https://app.berryexcel.online/api\n\n🟢 Deployment completed successfully on AKS."
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+
+      - name: Slack Notification - App Deployment Failed
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ *Application Deployment Failed*\n\n*Project:* Book Review Platform\n*Environment:* ${{ github.event.inputs.environment || 'dev' }}\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n*Triggered By:* ${{ github.actor }}\n\n🚨 One or more steps failed during application deployment.\n🔍 Please check the GitHub Actions logs for details:\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+
+
       - name: Deployment Summary
         run: |
           INGRESS_IP="${{ steps.ingress-ip.outputs.ingress_ip }}"

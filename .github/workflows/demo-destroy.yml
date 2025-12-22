@@ -76,6 +76,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Slack Notification - Demo Destroy Started
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+          "text": "🗑️ *Demo Destroy Started*\n\n*Project:* AKS IDP – Book Review Platform\n*Environment:* ${{ github.event.inputs.environment }}\n*Triggered By:* ${{ github.actor }}\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* `${{ github.sha }}`\n\n⏳ Application resource destruction has begun."
+          }' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
       
       - name: Azure Login
         uses: azure/login@v1
@@ -205,7 +213,12 @@ jobs:
         run: |
           echo "🗑️ Starting infrastructure destruction..."
           terraform apply -auto-approve destroy-plan
+          
+          # helm uninstall kube-prometheus-stack -n monitoring || true
+          # kubectl delete ns monitoring --ignore-not-found
+
           echo "✅ Infrastructure destroyed successfully"
+
       
       - name: Verify Destruction
         run: |
@@ -262,6 +275,24 @@ jobs:
           az acr repository delete --name $ACR_NAME --repository book-review-frontend --yes 2>/dev/null || echo "Frontend repository not found"
           
           echo "✅ ACR images cleaned up"
+
+      - name: Slack Notification - Demo Destroy Completed
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+          "text": "🗑️ *Demo Destroy Completed*\n\n*Project:* AKS IDP – Book Review Platform\n*Environment:* ${{ github.event.inputs.environment }}\n*Triggered By:* ${{ github.actor }}\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* `${{ github.sha }}`\n\n✅ Application and infrastructure resources have been destroyed."
+          }' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Slack Notification - Demo Destroy Completed
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+          "text": "❌ *Demo Destroy Failed!*\n\n*Project:* AKS IDP – Book Review Platform\n*Environment:* ${{ github.event.inputs.environment }}\n*Triggered By:* ${{ github.actor }}\n*Workflow:* ${{ github.workflow }}\n*Run ID:* ${{ github.run_id }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* `${{ github.sha }}`\n\n⚠️ Please check the GitHub Actions logs for details."
+          }' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
 
   summary:
     name: Destruction Summary

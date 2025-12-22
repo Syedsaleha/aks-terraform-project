@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: book-review-backend
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: book-review
+      component: backend
+  namespaceSelector:
+    matchNames:
+      - book-review-dev
+  endpoints:
+  - port: http
+    path: /
+    interval: 30s
